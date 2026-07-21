@@ -72,6 +72,19 @@ whether the activity fits that time of day. The weather is deterministic (same
 date → same forecast) so demos are reproducible. This whole module is the seam
 where real weather data or an AI-suggestions feature would plug in later.
 
+**Calendar export** ([`src/lib/calendar.ts`](./src/lib/calendar.ts)). Once a
+plan is finalized, "Add to calendar" opens a prefilled Google Calendar event
+page (no OAuth needed) or downloads a standard `.ics` file that Apple Calendar,
+Outlook, or any other calendar app can import.
+
+## Discord bot (optional)
+
+[`discord-bot/`](./discord-bot) is a separate Python bot that talks to the same
+Supabase project as the web app — `/sync create`, `/sync join`, `/sync status`,
+and `/sync link` let a Discord server create and check plans without leaving
+chat, handing off to the web app for availability picking and voting. See
+[`discord-bot/README.md`](./discord-bot/README.md) for setup.
+
 ## Project structure
 
 ```
@@ -97,6 +110,9 @@ src/
     supabase/                 Browser + server Supabase clients, DB types
 supabase/
   schema.sql                  Full Postgres schema + RLS policies
+discord-bot/
+  bot.py                      Slash commands: /sync create, join, status, link
+  supabase_client.py          Same Supabase tables, queried directly (no Next.js dependency)
 ```
 
 `components/plan/` breaks the plan hub into single-purpose pieces:
@@ -124,14 +140,15 @@ The schema, types, and algorithm interfaces are intentionally scoped to today's
 feature set, but kept boring and composable enough that these don't require a
 rewrite to add later:
 
-- **Calendar sync** (Google/Apple) — would read from `plans`/`finalized_*` and
-  write ICS/API events; no schema change needed.
-- **Discord** — a bot could call the same Server Actions (`joinPlan`,
-  `submitAvailability`, `castVote`) instead of the web UI.
+- **Calendar sync** (Google/Apple) — done, see above.
+- **Discord** — done, see above; the bot queries Supabase directly rather than
+  calling Next.js Server Actions (those only exist inside the Next.js process),
+  but it's reading and writing the exact same tables.
 - **AI suggestions** — `scoreActivities()` in `lib/activities.ts` is the exact
   seam to swap a static catalog for a model call.
 - **Reminders, maps, reservations, expense splitting** — each is additive: a new
   table plus a new component under `components/plan/`, without touching the
   core flow.
 
-None of the above is implemented — this MVP intentionally stops at finalize.
+Everything above the last bullet is implemented; reminders, maps, reservations,
+and expense splitting are intentionally still out of scope.
